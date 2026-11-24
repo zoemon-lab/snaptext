@@ -95,6 +95,12 @@ public static class TextUtil
         return sorted[sorted.Count / 2] <= 2;                // ほとんどの行が1〜2文字
     }
 
+    /// <summary>
+    /// 縦書きと横書きが混ざっているか：ふつうの長さの行（横書き）と、細切れの行（読めなかった縦書き）の両方がある
+    /// </summary>
+    public static bool IsMixedLayout(IReadOnlyList<int> lineCharCounts) =>
+        lineCharCounts.Count(n => n >= 6) >= 1 && lineCharCounts.Count(n => n <= 2) >= 3;
+
     /// <summary>英字・数字・記号（半角）がほとんどの行か。英語の文字認識で読み直す対象</summary>
     public static bool IsMostlyLatin(string line)
     {

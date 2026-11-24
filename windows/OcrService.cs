@@ -57,14 +57,51 @@ public static class OcrService
         }
 
         // Windows 標準で読めなかった縦書き（細切れになった）は、縦書き用の部品で読み直す
-        if (mode == ReadMode.Auto && TextUtil.LooksVertical(lines.Select(l => l.Text.Count(c => !char.IsWhiteSpace(c))).ToList(), bmp.Width, bmp.Height))
+        var counts = lines.Select(l => CharCount(l.Text)).ToList();
+        if (mode == ReadMode.Auto && TextUtil.LooksVertical(counts, bmp.Width, bmp.Height))
         {
+            // 縦書きと横書きが混ざっているときは、細切れになった部分だけを切り出して読み直し、横書きの行はそのまま使う
+            if (TextUtil.IsMixedLayout(counts))
+            {
+                var mixed = await RecognizeMixedAsync(source, bmp, lines);
+                if (mixed != null) return mixed;
+            }
             var vertical = await RecognizeVerticalAsync(source);
             if (!string.IsNullOrWhiteSpace(vertical.Text)) return vertical;
         }
 
         var joined = string.Join("\n", lines.Select(l => l.Text));
         return new OcrOutcome(joined.Length > 0 ? joined : null, ReadMode.Horizontal, null);
+    }
+
+    private static int CharCount(string s) => s.Count(c => !char.IsWhiteSpace(c));
+
+    private static async Task<OcrOutcome?> RecognizeMixedAsync(Bitmap source, Bitmap scaled, List<Line> lines)
+    {
+        var fragments = lines.Where(l => CharCount(l.Text) <= 2).ToList();
+        var rest = lines.Where(l => CharCount(l.Text) > 2).ToList();
+        if (fragments.Count == 0 || rest.Count == 0) return null;
+
+        // 細切れの行がある範囲（＝縦書きの部分）を、少し余白をつけて元の画像から切り出す
+        var area = fragments.Select(f => f.Box).Aggregate(RectangleF.Union);
+        float pad = fragments.Select(f => f.Box.Height).OrderBy(h => h).ElementAt(fragments.Count / 2) * 0.6f;
+        area.Inflate(pad, pad);
+        float k = (float)source.Width / scaled.Width;            // 拡大前の座標にもどす
+        var rect = Rectangle.Round(new RectangleF(area.X * k, area.Y * k, area.Width * k, area.Height * k));
+        rect.Intersect(new Rectangle(0, 0, source.Width, source.Height));
+        if (rect.Width < 8 || rect.Height < 8) return null;
+
+        using var crop = source.Clone(rect, PixelFormat.Format32bppArgb);
+        var vertical = await RecognizeVerticalAsync(crop);
+        if (string.IsNullOrWhiteSpace(vertical.Text)) return null;
+
+        // 左にあるほうから並べる
+        var horizontalText = string.Join("\n", rest.Select(l => l.Text));
+        float horizontalLeft = rest.Min(l => l.Box.Left);
+        var text = area.Left <= horizontalLeft
+            ? vertical.Text + "\n" + horizontalText
+            : horizontalText + "\n" + vertical.Text;
+        return new OcrOutcome(text, ReadMode.Vertical, null);
     }
 
     private readonly record struct Line(string Text, RectangleF Box);

@@ -27,5 +27,8 @@ var digits = new List<W> { new("=", 0, 0, 10, 20), new("1", 16, 0, 10, 20), new(
 Check("くっついた数字を割らない", TextUtil.JoinWords(digits), "= 12,");
 CheckB("英語の行を見分ける", TextUtil.IsMostlyLatin("Please bring your textbOOk and notebOOk."), true);
 CheckB("日本語の行は英語扱いしない", TextUtil.IsMostlyLatin("問題3x + 2y = 12 を解きなさい。"), false);
+CheckB("縦横まじり（長い行＋細切れ）を見分ける", TextUtil.IsMixedLayout(new[] { 1, 1, 12, 1, 2, 30, 1 }), true);
+CheckB("縦書きだけ（細切れのみ）はまじりではない", TextUtil.IsMixedLayout(new[] { 1, 1, 2, 1, 1 }), false);
+CheckB("横書きだけはまじりではない", TextUtil.IsMixedLayout(new[] { 17, 16, 30 }), false);
 Console.WriteLine(fail == 0 ? "すべて合格" : $"{fail} 件不合格");
 return fail;
