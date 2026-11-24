@@ -1,0 +1,25 @@
+SnapText（Windows 版）が使っている部品
+=====================================
+
+1. Tesseract OCR
+   https://github.com/tesseract-ocr/tesseract
+   Apache License 2.0（本文は Apache-2.0.txt）
+
+2. Tesseract の .NET 用ラッパー（charlesw/tesseract 5.2.0）
+   https://github.com/charlesw/tesseract
+   Apache License 2.0（本文は Apache-2.0.txt）
+
+3. Leptonica（Tesseract が使う画像処理部品。上の 2 に同梱）
+   http://www.leptonica.org/
+   Leptonica のライセンス（BSD 2-Clause 系）：http://www.leptonica.org/about-the-license.html
+
+4. 縦書きの日本語の学習データ jpn_vert.traineddata
+   https://github.com/tesseract-ocr/tessdata_best
+   Apache License 2.0（本文は Apache-2.0.txt）
+
+5. .NET ランタイム（アプリに同梱）
+   https://github.com/dotnet/runtime
+   MIT License（Copyright (c) .NET Foundation and Contributors）
+
+横書きの読み取りには Windows 標準の文字認識（Windows.Media.Ocr）を使っています。
+Mac 版は macOS 標準の文字認識（Vision）を使っています。

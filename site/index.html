@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SnapText</title>
+<meta name="description" content="画面の一部を囲むだけで、写っている文字を読み取ってコピー。縦書きの日本語にも対応。無料・登録不要。Mac と Windows で使えます。">
+<meta property="og:title" content="SnapText：画面の文字を、そのままコピー">
+<meta property="og:description" content="範囲を囲むだけで文字を読み取ってコピー。縦書き対応・無料・登録不要。Mac / Windows。">
+<meta property="og:image" content="https://zoemon-lab.github.io/snaptext/icon.png">
+<meta property="og:url" content="https://zoemon-lab.github.io/snaptext/">
+<link rel="icon" href="favicon.png">
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #17191c; --muted: #5d6470; --line: #e3e6ea;
+  --accent: #2f6fed; --accent-ink: #ffffff; --accent-soft: #e8f0ff; --ok: #1f8a4c; --warn-bg: #fff7e6; --warn-line: #f1d39a;
+  --radius: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111317; --panel: #1a1d22; --ink: #eceef1; --muted: #a2a9b4; --line: #2b3038;
+    --accent: #6b9bff; --accent-ink: #0b1020; --accent-soft: #1d2a45; --ok: #5cc98a; --warn-bg: #2a2416; --warn-line: #5a4a26;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111317; --panel: #1a1d22; --ink: #eceef1; --muted: #a2a9b4; --line: #2b3038;
+  --accent: #6b9bff; --accent-ink: #0b1020; --accent-soft: #1d2a45; --ok: #5cc98a; --warn-bg: #2a2416; --warn-line: #5a4a26;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  line-height: 1.75; font-size: 16px;
+}
+.wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
+header.hero { padding: 56px 0 32px; text-align: center; }
+.logo { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+h1 { font-size: clamp(30px, 6vw, 44px); margin: 18px 0 4px; letter-spacing: .02em; }
+.tagline { font-size: clamp(18px, 3.6vw, 22px); font-weight: 700; margin: 0 0 10px; }
+.lead { color: var(--muted); margin: 0 auto; max-width: 620px; }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
+.chips li { background: var(--accent-soft); color: var(--ink); border-radius: 999px; padding: 4px 12px; font-size: 14px; }
+
+.downloads { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 32px 0 8px; }
+.dl {
+  display: block; text-decoration: none; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; transition: transform .12s, box-shadow .12s;
+}
+.dl:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.08); }
+.dl.mine { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.dl .os { font-size: 20px; font-weight: 700; }
+.dl .req { color: var(--muted); font-size: 14px; }
+.dl .btn {
+  display: inline-block; margin-top: 12px; background: var(--accent); color: var(--accent-ink);
+  border-radius: 10px; padding: 8px 16px; font-weight: 700;
+}
+.mine-note { display: none; color: var(--accent); font-size: 13px; font-weight: 700; }
+.dl.mine .mine-note { display: block; }
+.free { text-align: center; color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+
+section { margin: 48px 0; }
+h2 { font-size: 22px; margin: 0 0 16px; }
+.shot { text-align: center; }
+.shot img { max-width: 100%; width: 560px; height: auto; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+.shot figcaption { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; counter-reset: s; padding: 0; list-style: none; }
+.steps li { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; counter-increment: s; }
+.steps li::before {
+  content: counter(s); display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink); font-weight: 700; margin-bottom: 6px;
+}
+.steps b { display: block; }
+kbd {
+  font-family: inherit; font-size: .9em; background: var(--panel); border: 1px solid var(--line);
+  border-bottom-width: 2px; border-radius: 6px; padding: 0 6px; white-space: nowrap;
+}
+
+.tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.tabs button {
+  font: inherit; font-weight: 700; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  border-radius: 999px; padding: 6px 18px; cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+.panel ol { margin: 0; padding-left: 1.4em; }
+.panel li { margin: 6px 0; }
+.note { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 12px; padding: 12px 14px; margin-top: 14px; font-size: 15px; }
+
+.faq details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 10px 0; }
+.faq summary { font-weight: 700; cursor: pointer; }
+.faq p { margin: 8px 0 0; color: var(--muted); }
+
+footer { border-top: 1px solid var(--line); padding: 24px 0 40px; color: var(--muted); font-size: 14px; text-align: center; }
+footer a, .panel a, .faq a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <img class="logo" src="icon.png" alt="" width="96" height="96">
+    <h1>SnapText</h1>
+    <p class="tagline">画面の文字を、そのままコピー。</p>
+    <p class="lead">スクショを撮るように範囲を囲むだけで、写っている文字を読み取ってコピーします。PDF・画像・動画の字幕など、選択できない文字もそのまま貼り付けられます。</p>
+    <ul class="chips">
+      <li>縦書きの日本語にも対応</li>
+      <li>英語も読めます</li>
+      <li>無料・登録不要</li>
+      <li>画像も文字も外に送りません</li>
+    </ul>
+
+    <div class="downloads">
+      <a class="dl" id="dl-mac" href="https://github.com/zoemon-lab/snaptext/releases/latest/download/SnapText-Mac.zip">
+        <span class="mine-note">お使いの Mac 用</span>
+        <div class="os">Mac 版</div>
+        <div class="req">macOS 15 以降（Intel・M1 以降の両方）</div>
+        <span class="btn">ダウンロード</span>
+      </a>
+      <a class="dl" id="dl-win" href="https://github.com/zoemon-lab/snaptext/releases/latest/download/SnapText-Windows.zip">
+        <span class="mine-note">お使いの Windows 用</span>
+        <div class="os">Windows 版</div>
+        <div class="req">Windows 10 / 11（64 ビット）</div>
+        <span class="btn">ダウンロード</span>
+      </a>
+    </div>
+    <p class="free">ダウンロードしたら、下の「はじめて開くとき」を見てください（1回だけの手順です）。</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <figure class="shot">
+    <img src="screenshot-mac.png" alt="SnapText の窓。縦書きと横書きの混じった画像から読み取った文字が表示され、「242文字をコピーしました」と出ている" width="1040" height="896" loading="lazy">
+    <figcaption>読み取った文字は自動でコピー済み。窓で直してからコピーし直すこともできます（画面は Mac 版）</figcaption>
+  </figure>
+
+  <section>
+    <h2>使い方</h2>
+    <ol class="steps">
+      <li><b>キーを押す</b>Mac は <kbd>⌘</kbd> <kbd>shift</kbd> <kbd>9</kbd>、Windows は <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>9</kbd></li>
+      <li><b>範囲を囲む</b>読みたい部分をマウスでドラッグします</li>
+      <li><b>貼り付ける</b>文字はもうコピーされています。<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>V</kbd> で貼り付け</li>
+    </ol>
+    <p>画像ファイルを窓にドラッグしたり、窓で貼り付けたりしても読めます。「改行をとる」にチェックを入れると、改行のない文章にしてコピーし直します。</p>
+  </section>
+
+  <section>
+    <h2>はじめて開くとき</h2>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-mac" aria-selected="true" aria-controls="p-mac">Mac</button>
+      <button role="tab" id="tab-win" aria-selected="false" aria-controls="p-win">Windows</button>
+    </div>
+    <div class="panel" id="p-mac" role="tabpanel" aria-labelledby="tab-mac">
+      <ol>
+        <li>ダウンロードした zip を開き、中の <b>SnapText.app</b> を「アプリケーション」フォルダに入れます。</li>
+        <li>SnapText.app をダブルクリック。「"SnapText"は開いていません」と出たら「完了」を押します。</li>
+        <li>システム設定 →「プライバシーとセキュリティ」を開いて下へスクロールし、「このまま開く」を押します（パスワードか Touch ID を入れます）。</li>
+        <li><kbd>⌘</kbd> <kbd>shift</kbd> <kbd>9</kbd> を押し、「画面収録」の許可を求められたら「システム設定を開く」→ SnapText をオン →「終了して再度開く」。</li>
+      </ol>
+      <div class="note">何度も許可を求められる、または範囲を選んでも何も出ないときは：システム設定 →「プライバシーとセキュリティ」→「画面収録」で SnapText を選んで「−」で消し、「＋」からアプリケーションの SnapText.app を選び直してください。</div>
+    </div>
+    <div class="panel" id="p-win" role="tabpanel" aria-labelledby="tab-win" hidden>
+      <ol>
+        <li>ダウンロードした zip を右クリック →「すべて展開」。</li>
+        <li>中の <b>SnapText.exe</b> を好きな場所（例：ドキュメント）に置いてダブルクリック。インストールや管理者権限はいりません。</li>
+        <li>「Windows によって PC が保護されました」と出たら「詳細情報」→「実行」を押します。</li>
+        <li>画面右下（通知領域）に SnapText のアイコンが出ます。メニューの「Windows の起動時に自動で起動」を選ぶと、毎回開く手間がなくなります。</li>
+      </ol>
+      <div class="note">「日本語の文字認識が入っていません」と出たら：設定 → 時刻と言語 → 言語と地域 → 日本語の「…」→ 言語のオプション →「光学式文字認識」を追加してください。</div>
+    </div>
+  </section>
+
+  <section class="faq">
+    <h2>よくある質問</h2>
+    <details>
+      <summary>画像や文字がどこかに送られることはありますか？</summary>
+      <p>ありません。読み取りは Mac・Windows に入っている文字認識（Windows の縦書きは同梱の Tesseract）を使い、すべてお使いのパソコンの中で行います。</p>
+    </details>
+    <details>
+      <summary>縦書きはどのくらい読めますか？</summary>
+      <p>Mac 版は縦書きもほぼ正確に読めます。Windows 版は、縦書きらしいと判断すると縦書き用の読み取りに自動で切り替えます。まちがえたときは窓の「縦書きとして読み直す」を押してください。縦書きと横書きが混ざっている範囲は、分けて囲むときれいに読めます。</p>
+    </details>
+    <details>
+      <summary>開くときに警告が出るのはなぜですか？</summary>
+      <p>Apple・Microsoft の有料の署名をしていないためです。上の「はじめて開くとき」の手順で開けます。</p>
+    </details>
+    <details>
+      <summary>お金はかかりますか？</summary>
+      <p>かかりません。登録も広告もありません。</p>
+    </details>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    SnapText ・ zoemon-lab ・ <a href="https://github.com/zoemon-lab/snaptext">ソースコード</a> ・ <a href="https://github.com/zoemon-lab/snaptext/blob/main/licenses/THIRD_PARTY_NOTICES.txt">使っている部品のライセンス</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // お使いのパソコンに合うほうを目立たせ、「はじめて開くとき」もそちらを開く
+  var ua = navigator.userAgent || "";
+  var isWin = /Windows/i.test(ua), isMac = /Macintosh|Mac OS X/i.test(ua) && !/iPhone|iPad/i.test(ua);
+  if (isMac) document.getElementById("dl-mac").classList.add("mine");
+  if (isWin) document.getElementById("dl-win").classList.add("mine");
+
+  var tabs = { mac: [document.getElementById("tab-mac"), document.getElementById("p-mac")],
+               win: [document.getElementById("tab-win"), document.getElementById("p-win")] };
+  function show(key) {
+    for (var k in tabs) {
+      var on = k === key;
+      tabs[k][0].setAttribute("aria-selected", on ? "true" : "false");
+      tabs[k][1].hidden = !on;
+    }
+  }
+  tabs.mac[0].addEventListener("click", function () { show("mac"); });
+  tabs.win[0].addEventListener("click", function () { show("win"); });
+  if (isWin) show("win");
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+.DS_Store
+mac/.build/
+mac/SnapText.app/
+windows/bin/
+windows/obj/
+windows/dist/
+windows/tests/bin/
+windows/tests/obj/
