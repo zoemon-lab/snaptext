@@ -48,4 +48,4 @@ Mac 版 SnapText（`../SnapText`）と同じ使い方です。画像も文字も
 
 - Windows.Media.Ocr（Windows 標準）
 - [Tesseract](https://github.com/tesseract-ocr/tesseract)（Apache License 2.0）、.NET 用ラッパー [charlesw/tesseract](https://github.com/charlesw/tesseract)（Apache License 2.0）
-- 縦書きの学習データ `tessdata/jpn_vert.traineddata`：[tesseract-ocr/tessdata_best](https://github.com/tesseract-ocr/tessdata_best)（Apache License 2.0）
+- 縦書きの学習データ `tessdata/jpn_vert.traineddata`：[tesseract-ocr/tessdata](https://github.com/tesseract-ocr/tessdata)（Apache License 2.0）

@@ -14,11 +14,18 @@ Check("離れていれば日本語と英数字の間に空白", TextUtil.JoinWor
 Check("縦書き部品の余分な空白を消す", TextUtil.RemoveCjkSpaces("春 は あ け ぼ の 。\n\n な り ゆ く \n"), "春はあけぼの。\nなりゆく");
 Check("改行をとる（日本語）", TextUtil.JoinLines("春はあけぼの。やうやう白く\r\nなりゆく山ぎは"), "春はあけぼの。やうやう白くなりゆく山ぎは");
 Check("改行をとる（英語）", TextUtil.JoinLines("Please bring your\nnotebook."), "Please bring your notebook.");
-CheckB("1文字ずつの行が並ぶ→縦書き", TextUtil.LooksVertical(new[] { 1, 1, 2, 1, 1 }, new[] { 1.0, 1, 0.5, 1, 1 }, 300, 600), true);
-CheckB("ふつうの横書き→横書き", TextUtil.LooksVertical(new[] { 17, 16, 30 }, new[] { 0.05, 0.05, 0.04 }, 1200, 360), false);
-CheckB("何も読めず縦長→縦書きを試す", TextUtil.LooksVertical(Array.Empty<int>(), Array.Empty<double>(), 400, 760), true);
-CheckB("何も読めず横長→横書きのまま", TextUtil.LooksVertical(Array.Empty<int>(), Array.Empty<double>(), 800, 200), false);
-CheckB("行の枠が縦長→縦書き", TextUtil.LooksVertical(new[] { 5, 6, 4 }, new[] { 4.0, 5.0, 3.5 }, 300, 600), true);
-CheckB("見出し1行だけ→横書き", TextUtil.LooksVertical(new[] { 9 }, new[] { 0.1 }, 600, 80), false);
+CheckB("1文字ずつの行が並ぶ→縦書き部品で読み直す", TextUtil.LooksVertical(new[] { 1, 1, 2, 1, 1 }, 300, 600), true);
+CheckB("ふつうの横書き→そのまま", TextUtil.LooksVertical(new[] { 17, 16, 30 }, 1200, 360), false);
+CheckB("Windowsが縦書きを読めた（長い行）→そのまま", TextUtil.LooksVertical(new[] { 13, 15, 16 }, 400, 760), false);
+CheckB("何も読めず縦長→縦書き部品を試す", TextUtil.LooksVertical(Array.Empty<int>(), 400, 760), true);
+CheckB("何も読めず横長→そのまま", TextUtil.LooksVertical(Array.Empty<int>(), 800, 200), false);
+CheckB("見出し1行だけ→そのまま", TextUtil.LooksVertical(new[] { 9 }, 600, 80), false);
+// 試験用の Windows で見つかった問題
+var comma = new List<W> { new("一", 0, 0, 20, 20), new("定", 20, 0, 20, 20), new("で", 40, 0, 20, 20), new("、", 60, 0, 20, 20), new("傾", 95, 0, 20, 20), new("き", 115, 0, 20, 20) };
+Check("「、」のあとに空白を入れない", TextUtil.JoinWords(comma), "一定で、傾き");
+var digits = new List<W> { new("=", 0, 0, 10, 20), new("1", 16, 0, 10, 20), new("2", 27, 0, 10, 20), new(",", 38, 0, 4, 20) };
+Check("くっついた数字を割らない", TextUtil.JoinWords(digits), "= 12,");
+CheckB("英語の行を見分ける", TextUtil.IsMostlyLatin("Please bring your textbOOk and notebOOk."), true);
+CheckB("日本語の行は英語扱いしない", TextUtil.IsMostlyLatin("問題3x + 2y = 12 を解きなさい。"), false);
 Console.WriteLine(fail == 0 ? "すべて合格" : $"{fail} 件不合格");
 return fail;

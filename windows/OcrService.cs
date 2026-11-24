@@ -22,52 +22,83 @@ public static class OcrService
 
     public static async Task<OcrOutcome> RecognizeAsync(Bitmap source, ReadMode mode)
     {
-        using var bmp = Prepare(source);
-
         if (mode == ReadMode.Vertical)
-            return await RecognizeVerticalAsync(bmp);
+            return await RecognizeVerticalAsync(source);
 
+        using var bmp = Prepare(source);
         var engine = OcrEngine.TryCreateFromLanguage(new Windows.Globalization.Language("ja"))
                      ?? OcrEngine.TryCreateFromUserProfileLanguages();
         if (engine == null)
         {
-            if (mode == ReadMode.Auto && bmp.Height > bmp.Width)
-                return await RecognizeVerticalAsync(bmp);
+            if (mode == ReadMode.Auto && source.Height > source.Width)
+                return await RecognizeVerticalAsync(source);
             return new OcrOutcome(null, ReadMode.Horizontal,
                 "Windows の日本語の文字認識が入っていません（設定 → 時刻と言語 → 言語 → 日本語 → 言語のオプション → 光学式文字認識）");
         }
 
-        var result = await engine.RecognizeAsync(await ToSoftwareBitmapAsync(bmp));
-        var lines = new List<string>();
-        var counts = new List<int>();
-        var aspects = new List<double>();
+        var soft = await ToSoftwareBitmapAsync(bmp);
+        var lines = ReadLines(await engine.RecognizeAsync(soft));
+
+        // 英語の行は、英語の文字認識で読み直す（日本語の認識だと「textbOOk」のように大文字小文字が乱れるため）
+        if (lines.Any(l => TextUtil.IsMostlyLatin(l.Text)) && !engine.RecognizerLanguage.LanguageTag.StartsWith("en"))
+        {
+            var en = OcrEngine.TryCreateFromLanguage(new Windows.Globalization.Language("en-US"));
+            if (en != null)
+            {
+                var enLines = ReadLines(await en.RecognizeAsync(soft));
+                for (int i = 0; i < lines.Count; i++)
+                {
+                    if (!TextUtil.IsMostlyLatin(lines[i].Text)) continue;
+                    var best = enLines.OrderByDescending(e => Overlap(e.Box, lines[i].Box)).FirstOrDefault();
+                    if (best.Text != null && Overlap(best.Box, lines[i].Box) > 0.5 && TextUtil.IsMostlyLatin(best.Text))
+                        lines[i] = lines[i] with { Text = best.Text };
+                }
+            }
+        }
+
+        // Windows 標準で読めなかった縦書き（細切れになった）は、縦書き用の部品で読み直す
+        if (mode == ReadMode.Auto && TextUtil.LooksVertical(lines.Select(l => l.Text.Count(c => !char.IsWhiteSpace(c))).ToList(), bmp.Width, bmp.Height))
+        {
+            var vertical = await RecognizeVerticalAsync(source);
+            if (!string.IsNullOrWhiteSpace(vertical.Text)) return vertical;
+        }
+
+        var joined = string.Join("\n", lines.Select(l => l.Text));
+        return new OcrOutcome(joined.Length > 0 ? joined : null, ReadMode.Horizontal, null);
+    }
+
+    private readonly record struct Line(string Text, RectangleF Box);
+
+    private static List<Line> ReadLines(OcrResult result)
+    {
+        var list = new List<Line>();
         foreach (var line in result.Lines)
         {
             var words = line.Words
                 .Select(w => new TextUtil.Word(w.Text, w.BoundingRect.X, w.BoundingRect.Y, w.BoundingRect.Width, w.BoundingRect.Height))
                 .ToList();
             if (words.Count == 0) continue;
-            var text = TextUtil.JoinWords(words);
-            lines.Add(text);
-            counts.Add(text.Count(c => !char.IsWhiteSpace(c)));
-            double left = words.Min(w => w.X), right = words.Max(w => w.X + w.Width);
-            double top = words.Min(w => w.Y), bottom = words.Max(w => w.Y + w.Height);
-            aspects.Add((bottom - top) / Math.Max(1, right - left));
+            float left = (float)words.Min(w => w.X), top = (float)words.Min(w => w.Y);
+            float right = (float)words.Max(w => w.X + w.Width), bottom = (float)words.Max(w => w.Y + w.Height);
+            list.Add(new Line(TextUtil.JoinWords(words), RectangleF.FromLTRB(left, top, right, bottom)));
         }
-
-        if (mode == ReadMode.Auto && TextUtil.LooksVertical(counts, aspects, bmp.Width, bmp.Height))
-        {
-            var vertical = await RecognizeVerticalAsync(bmp);
-            if (!string.IsNullOrWhiteSpace(vertical.Text)) return vertical;
-        }
-
-        var joined = string.Join("\n", lines);
-        return new OcrOutcome(joined.Length > 0 ? joined : null, ReadMode.Horizontal, null);
+        return list;
     }
 
-    private static Task<OcrOutcome> RecognizeVerticalAsync(Bitmap bmp)
+    /// <summary>2つの枠の重なり（小さいほうの面積に対する割合）</summary>
+    private static double Overlap(RectangleF a, RectangleF b)
     {
+        var i = RectangleF.Intersect(a, b);
+        if (i.IsEmpty) return 0;
+        double small = Math.Min(a.Width * a.Height, b.Width * b.Height);
+        return small <= 0 ? 0 : i.Width * i.Height / small;
+    }
+
+    private static Task<OcrOutcome> RecognizeVerticalAsync(Bitmap source)
+    {
+        // 縦書き部品は、拡大すると読みまちがいが増える。とても小さい画像のときだけ2倍にする
         byte[] png;
+        using (var bmp = Prepare(source, upscaleBelow: 400))
         using (var ms = new MemoryStream()) { bmp.Save(ms, ImageFormat.Png); png = ms.ToArray(); }
 
         return Task.Run(() =>
@@ -97,11 +128,11 @@ public static class OcrService
     }
 
     /// <summary>白背景にそろえ、小さすぎる画像は2倍に、大きすぎる画像は縮めてから読む</summary>
-    private static Bitmap Prepare(Bitmap src)
+    private static Bitmap Prepare(Bitmap src, int upscaleBelow = 800)
     {
         double scale = 1;
         int longSide = Math.Max(src.Width, src.Height);
-        if (longSide < 800) scale = 2;
+        if (longSide < upscaleBelow) scale = 2;
         int max = (int)OcrEngine.MaxImageDimension;
         if (longSide * scale > max) scale = (double)max / longSide;
 

@@ -8,7 +8,7 @@
 |---|---|---|
 | 必要なもの | macOS 15 以降（Intel / Apple シリコン） | Windows 10 / 11（64 ビット） |
 | 範囲を選ぶキー | ⌘ + shift + 9 | Ctrl + Shift + 9 |
-| 文字の読み取り | macOS 標準（Vision）。縦書きも読める | 横書きは Windows 標準（Windows.Media.Ocr）、縦書きは同梱の Tesseract |
+| 文字の読み取り | macOS 標準（Vision）。縦書きは macOS 26 以降 | Windows 標準（Windows.Media.Ocr）。読めない縦書きは同梱の Tesseract で読み直す |
 
 ## フォルダ
 

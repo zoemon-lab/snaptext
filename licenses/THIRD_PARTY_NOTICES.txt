@@ -14,7 +14,7 @@ SnapText（Windows 版）が使っている部品
    Leptonica のライセンス（BSD 2-Clause 系）：http://www.leptonica.org/about-the-license.html
 
 4. 縦書きの日本語の学習データ jpn_vert.traineddata
-   https://github.com/tesseract-ocr/tessdata_best
+   https://github.com/tesseract-ocr/tessdata
    Apache License 2.0（本文は Apache-2.0.txt）
 
 5. .NET ランタイム（アプリに同梱）

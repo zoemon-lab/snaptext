@@ -34,14 +34,24 @@ public static class TextUtil
                 char a = sb[sb.Length - 1], b = w.Text[0];
                 double gap = w.X - (p.X + p.Width);
                 double h = Math.Max(1, Math.Max(p.Height, w.Height));
-                bool bothLatin = !IsCjk(a) && !IsCjk(b);
-                if (bothLatin || gap > h * 0.6) sb.Append(' ');
+                bool space;
+                if (!IsCjk(a) && !IsCjk(b))
+                    space = gap > h * 0.15;          // 英数字どうし：単語の間だけ（「1 2」のように数字を割らない）
+                else if (IsCjkPunct(a) || IsCjkPunct(b))
+                    space = false;                   // 「、」「。」「（」のまわりには入れない
+                else
+                    space = gap > h * 0.9;           // 日本語がからむ：はっきり離れているときだけ
+                if (space) sb.Append(' ');
             }
             sb.Append(w.Text);
             prev = w;
         }
         return sb.ToString();
     }
+
+    /// <summary>和文の句読点・かっこ（字形の中に余白があるので、間が空いて見える）</summary>
+    public static bool IsCjkPunct(char c) =>
+        (c >= '\u3000' && c <= '\u303F') || "（）［］｛｝｟｠｢｣、。，．・：；！？".IndexOf(c) >= 0;
 
     /// <summary>日本語の文字と文字のあいだに入った余分な空白を消す（縦書き部品の出力用）</summary>
     public static string RemoveCjkSpaces(string s)
@@ -72,21 +82,29 @@ public static class TextUtil
     }
 
     /// <summary>
-    /// 横書き用の認識結果から「これは縦書きらしい」と判断する。
-    /// Windows の文字認識は縦書きを読めず、1〜2文字ずつの細切れの行になるか、何も読めないことが多い。
+    /// Windows 標準の結果から「縦書き用の部品で読み直したほうがよい」と判断する。
+    /// Windows 標準は、きれいな縦書きなら読める（行が縦長になる）。読めないときは1〜2文字ずつの細切れの行になるか、何も読めない。
     /// </summary>
     /// <param name="lineCharCounts">各行の文字数（空白を除く）</param>
-    /// <param name="lineAspects">各行の 高さ÷幅</param>
-    public static bool LooksVertical(IReadOnlyList<int> lineCharCounts, IReadOnlyList<double> lineAspects, int imageWidth, int imageHeight)
+    public static bool LooksVertical(IReadOnlyList<int> lineCharCounts, int imageWidth, int imageHeight)
     {
         if (lineCharCounts.Count == 0)
             return imageHeight > imageWidth * 1.2;           // 何も読めず、画像が縦長
-        if (lineCharCounts.Count >= 3)
+        if (lineCharCounts.Count < 3) return false;
+        var sorted = lineCharCounts.OrderBy(n => n).ToList();
+        return sorted[sorted.Count / 2] <= 2;                // ほとんどの行が1〜2文字
+    }
+
+    /// <summary>英字・数字・記号（半角）がほとんどの行か。英語の文字認識で読み直す対象</summary>
+    public static bool IsMostlyLatin(string line)
+    {
+        int latin = 0, total = 0;
+        foreach (var c in line)
         {
-            var sorted = lineCharCounts.OrderBy(n => n).ToList();
-            if (sorted[sorted.Count / 2] <= 2) return true;   // ほとんどの行が1〜2文字
+            if (char.IsWhiteSpace(c)) continue;
+            total++;
+            if (c < 128) latin++;
         }
-        int tall = lineAspects.Count(a => a > 1.5);
-        return tall * 2 > lineAspects.Count;                  // 行の枠の半分以上が縦長
+        return total >= 4 && latin * 10 >= total * 8;
     }
 }
