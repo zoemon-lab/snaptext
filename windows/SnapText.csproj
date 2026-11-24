@@ -25,7 +25,11 @@
     <!-- 作った PC のフォルダ名（ユーザー名）がアプリの中に残らないようにする -->
     <DebugType>none</DebugType>
     <Deterministic>true</Deterministic>
-    <PathMap>$(MSBuildProjectDirectory)=/src,$(HOME)=/home</PathMap>
+    <PathMap>$(MSBuildProjectDirectory)=/src</PathMap>
+  </PropertyGroup>
+  <!-- Mac で作るときだけ、ホームフォルダ（ユーザー名）も消す。Windows では HOME が空なので付けない -->
+  <PropertyGroup Condition="'$(HOME)' != ''">
+    <PathMap>$(PathMap),$(HOME)=/home</PathMap>
   </PropertyGroup>
 
   <ItemGroup>

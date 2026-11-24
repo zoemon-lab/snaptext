@@ -9,7 +9,12 @@ permissions:
   contents: write
 jobs:
   mac:
-    runs-on: macos-15
+    # macOS 15 と 26 の両方で読めるか試す。配るファイルは macOS 26 で作ったもの（macOS 15 以降で動く）
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Build (Intel + Apple silicon)
@@ -17,12 +22,14 @@ jobs:
       - name: Self test (read the test images)
         run: mac/SnapText.app/Contents/MacOS/SnapText --selftest testdata/tate.png testdata/yoko.png testdata/mixed.png
       - name: Package
+        if: matrix.os == 'macos-26'
         run: |
           mkdir -p out/SnapText-Mac
           ditto mac/SnapText.app out/SnapText-Mac/SnapText.app
           cp "docs/はじめにお読みください（Mac）.txt" out/SnapText-Mac/
           cd out && ditto -c -k --sequesterRsrc --keepParent SnapText-Mac SnapText-Mac.zip
       - uses: actions/upload-artifact@v4
+        if: matrix.os == 'macos-26'
         with:
           name: mac
           path: out/SnapText-Mac.zip
