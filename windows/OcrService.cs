@@ -82,12 +82,26 @@ public static class OcrService
         var rest = lines.Where(l => CharCount(l.Text) > 2).ToList();
         if (fragments.Count == 0 || rest.Count == 0) return null;
 
-        // 細切れの行がある範囲（＝縦書きの部分）を、少し余白をつけて元の画像から切り出す
+        // 縦書きの部分を切り出す。Windows 標準は縦書きの一部の文字しか拾わないことがあるので、
+        // 細切れの行の範囲ではなく「横書きの行がない側」を上から下まで全部使う
+        var longLines = rest.Where(l => CharCount(l.Text) >= 6).ToList();
+        if (longLines.Count == 0) longLines = rest;
         var area = fragments.Select(f => f.Box).Aggregate(RectangleF.Union);
-        float pad = fragments.Select(f => f.Box.Height).OrderBy(h => h).ElementAt(fragments.Count / 2) * 0.6f;
-        area.Inflate(pad, pad);
+        float hLeft = longLines.Min(l => l.Box.Left), hRight = longLines.Max(l => l.Box.Right);
+        float gap = longLines.Select(l => l.Box.Height).OrderBy(h => h).ElementAt(longLines.Count / 2) * 0.3f;
+        RectangleF cut;
+        if (area.Left + area.Width / 2 < hLeft)                       // 縦書きが左側
+            cut = RectangleF.FromLTRB(0, 0, Math.Max(area.Right, hLeft - gap), scaled.Height);
+        else if (area.Left + area.Width / 2 > hRight)                 // 縦書きが右側
+            cut = RectangleF.FromLTRB(Math.Min(area.Left, hRight + gap), 0, scaled.Width, scaled.Height);
+        else                                                          // 上下に並んでいるなど：細切れの範囲に余白をつける
+        {
+            cut = area;
+            float pad = fragments.Select(f => f.Box.Height).OrderBy(h => h).ElementAt(fragments.Count / 2) * 0.6f;
+            cut.Inflate(pad, pad);
+        }
         float k = (float)source.Width / scaled.Width;            // 拡大前の座標にもどす
-        var rect = Rectangle.Round(new RectangleF(area.X * k, area.Y * k, area.Width * k, area.Height * k));
+        var rect = Rectangle.Round(new RectangleF(cut.X * k, cut.Y * k, cut.Width * k, cut.Height * k));
         rect.Intersect(new Rectangle(0, 0, source.Width, source.Height));
         if (rect.Width < 8 || rect.Height < 8) return null;
 
